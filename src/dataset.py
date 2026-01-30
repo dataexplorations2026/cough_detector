@@ -137,15 +137,15 @@ class CoughDataset(Dataset):
                 spectrogram = self.spec_augmentor(spectrogram)
             return spectrogram, label
         
-        # Load audio
+        # Load audio - fail hard if this doesn't work, never silently return zeros
         try:
             waveform, sr = torchaudio.load(audio_path)
         except Exception as e:
-            print(f"Error loading {audio_path}: {e}")
-            # Return a zero tensor as fallback
-            expected_frames = self.preprocessor.get_expected_time_frames()
-            num_features = self.preprocessor.get_num_features() if hasattr(self.preprocessor, 'get_num_features') else self.preprocessor.n_mels
-            return torch.zeros(1, num_features, expected_frames), label
+            raise RuntimeError(
+                f"Failed to load audio file: {audio_path}\n"
+                f"Error: {e}\n"
+                f"If you see 'torchcodec' errors, run: pip install torchcodec"
+            ) from e
         
         # Resample and convert to mono
         waveform = self.preprocessor.resample(waveform, sr)
@@ -269,13 +269,15 @@ class ESC50Dataset(Dataset):
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
         audio_path, label = self.samples[idx]
         
+        # Load audio - fail hard if this doesn't work, never silently return zeros
         try:
             waveform, sr = torchaudio.load(audio_path)
         except Exception as e:
-            print(f"Error loading {audio_path}: {e}")
-            expected_frames = self.preprocessor.get_expected_time_frames()
-            num_features = self.preprocessor.get_num_features() if hasattr(self.preprocessor, 'get_num_features') else self.preprocessor.n_mels
-            return torch.zeros(1, num_features, expected_frames), label
+            raise RuntimeError(
+                f"Failed to load audio file: {audio_path}\n"
+                f"Error: {e}\n"
+                f"If you see 'torchcodec' errors, run: pip install torchcodec"
+            ) from e
         
         waveform = self.preprocessor.resample(waveform, sr)
         waveform = self.preprocessor.to_mono(waveform)
